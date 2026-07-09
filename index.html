@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>皮克敏轉盤計時器</title>
+<style>
+  :root {
+    --gold: #e8c15a;
+    --gold-dark: #b8912f;
+    --flash: #fff3b0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+  }
+  body {
+    position: relative;
+    overflow-x: hidden;
+    background: radial-gradient(ellipse at 50% 0%, #2b2560, #120f2e 65%, #0a0820);
+    font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 12px 0;
+  }
+  #stars {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #fff;
+    border-radius: 50%;
+    animation: twinkle 2.4s ease-in-out infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.15; }
+    50% { opacity: 1; }
+  }
+
+  h1 {
+    font-size: 18px;
+    color: #f3ecff;
+    margin: 0 0 14px;
+    text-align: center;
+    z-index: 1;
+  }
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.12);
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+    padding: 10px 16px;
+    border-radius: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    justify-content: center;
+    z-index: 1;
+  }
+  .controls label { font-size: 14px; color: #f3ecff; }
+  .controls span { font-size: 13px; color: #cfc7ea; }
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .controls input {
+    width: 60px;
+    font-size: 18px;
+    padding: 8px 4px;
+    border-radius: 8px;
+    border: 1px solid #998fc7;
+    text-align: center;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .controls input::-webkit-outer-spin-button,
+  .controls input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .controls button.step-btn {
+    z-index: auto;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    font-size: 22px;
+    line-height: 1;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(180deg, #a68be0, #7c5fc4);
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .controls button.step-btn:active { transform: translateY(1px); }
+  .controls button.step-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .controls input:disabled {
+    opacity: 0.6;
+  }
+  .controls button.help-btn {
+    z-index: auto;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.6);
+    background: rgba(255,255,255,0.15);
+    color: #f3ecff;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: none;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .controls button.help-btn:active { transform: translateY(1px); }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: rgba(10, 8, 32, 0.72);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.open {
+    display: flex;
+  }
+  .modal {
+    width: min(92vw, 400px);
+    max-height: 80vh;
+    overflow-y: auto;
+    background: linear-gradient(180deg, #2b2560, #1a1640);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 20px;
+    color: #f3ecff;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  }
+  .modal h2 {
+    margin: 0 0 12px;
+    font-size: 17px;
+    color: #ffd94a;
+    text-align: center;
+  }
+  .modal ol {
+    margin: 0 0 18px;
+    padding-left: 20px;
+    font-size: 14px;
+    line-height: 1.7;
+    color: #e5deff;
+  }
+  .modal ol li + li { margin-top: 8px; }
+  .modal button.modal-close {
+    z-index: auto;
+    display: block;
+    width: 100%;
+    font-size: 16px;
+    padding: 12px 0;
+    min-height: 44px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ff9457, #ff6f3c);
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5);
+    margin-bottom: 0;
+  }
+  .modal button.modal-close:active { transform: translateY(1px); }
+  .stage {
+    position: relative;
+    width: min(90vw, 380px);
+    height: min(90vw, 380px);
+    margin-bottom: 10px;
+    z-index: 1;
+  }
+  .pot {
+    position: absolute;
+    width: 25%;
+    aspect-ratio: 1 / 1;
+    transform: translate(-50%, -50%);
+    border-radius: 22%;
+    border: 4px solid transparent;
+    background:
+      radial-gradient(circle at 35% 30%, #fff3c4, var(--gold) 55%, var(--gold-dark)) padding-box,
+      linear-gradient(135deg, #ffb3d6, #a9e6ff 45%, #ffe9a6 100%) border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.45);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .pot-icon {
+    font-size: 48px;
+    line-height: 1;
+  }
+  .pot-sec {
+    font-size: 15px;
+    font-weight: bold;
+    color: #5a3d0a;
+    margin-top: 2px;
+  }
+  .pot[data-type="sprout"] {
+    background:
+      radial-gradient(circle at 35% 30%, #eafff0, #7ed957 55%, #3f9d4a) padding-box,
+      linear-gradient(135deg, #ffb3d6, #a9e6ff 45%, #ffe9a6 100%) border-box;
+  }
+  .pot[data-type="sprout"] .pot-sec { color: #1f4a22; }
+  .pot[data-type="other"] {
+    background:
+      radial-gradient(circle at 35% 30%, #eef1ff, #9aa7d6 55%, #5c6aa0) padding-box,
+      linear-gradient(135deg, #ffb3d6, #a9e6ff 45%, #ffe9a6 100%) border-box;
+  }
+  .pot[data-type="other"] .pot-sec { color: #23285a; }
+  .pot.active {
+    transform: translate(-50%, -50%) scale(1.3);
+    box-shadow: 0 0 26px 10px rgba(255, 243, 176, 0.9);
+    background:
+      radial-gradient(circle at 35% 30%, #fff, var(--flash) 60%, var(--gold)) padding-box,
+      linear-gradient(135deg, #fff, #ffe9a6) border-box;
+  }
+  /* regular hexagon, 60 degrees apart, clockwise from bottom:
+     bottom(0) -> lower-left(1) -> upper-left(2) -> top(3) -> upper-right(4) -> lower-right(5)
+     radius shrunk to keep the larger cards within the stage box (no overlap with the hint below) */
+  .pot[data-order="0"] { left: 50%;   top: 84%; }
+  .pot[data-order="1"] { left: 20.6%; top: 67%; }
+  .pot[data-order="2"] { left: 20.6%; top: 33%; }
+  .pot[data-order="3"] { left: 50%;   top: 16%; }
+  .pot[data-order="4"] { left: 79.4%; top: 33%; }
+  .pot[data-order="5"] { left: 79.4%; top: 67%; }
+
+  .hint {
+    z-index: 1;
+    font-size: 12px;
+    color: #cfc7ea;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+  .caption {
+    z-index: 1;
+    font-size: 17px;
+    font-weight: bold;
+    color: #ffd94a;
+    text-shadow: 0 2px 0 #7a4a00, 0 0 6px rgba(0,0,0,0.6);
+    margin: 6px 0 12px;
+    text-align: center;
+  }
+  .timer {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .timer-value {
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+    color: #fff;
+    background: rgba(0,0,0,0.35);
+    padding: 6px 14px;
+    border-radius: 10px;
+  }
+  .timer button.reset-btn {
+    z-index: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    padding: 10px 22px;
+    min-height: 44px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #7ec8f0, #4a9dd6);
+    color: #fff;
+    font-weight: normal;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    margin-bottom: 0;
+  }
+  .timer button.reset-btn:active { transform: translateY(1px); }
+  button {
+    z-index: 1;
+    font-size: 18px;
+    padding: 10px 32px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #ff9457, #ff6f3c);
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.5);
+    margin-bottom: 18px;
+  }
+  button:active { transform: translateY(1px); }
+  button.running { background: linear-gradient(180deg, #8a8a8a, #666); }
+
+  .field {
+    position: relative;
+    width: 100%;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: auto;
+  }
+  .flowers {
+    display: flex;
+    gap: 22px;
+    margin-bottom: -6px;
+  }
+  .flowers span { font-size: 20px; }
+  .grass {
+    position: relative;
+    width: 100%;
+    height: 70px;
+    background: linear-gradient(180deg, #3f9d4a, #1f6b2c);
+    border-top: 3px solid #57c25f;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .copyright {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 6px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    text-align: center;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+  }
+  .pikmin {
+    margin-top: -34px;
+    width: 46px;
+    height: 60px;
+    position: relative;
+  }
+  .pikmin .leaf {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 14px;
+    height: 20px;
+    background: #4fae52;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  }
+  .pikmin .body {
+    position: absolute;
+    top: 10px;
+    width: 46px;
+    height: 46px;
+    background: radial-gradient(circle at 35% 30%, #ff8a7a, #e8483a 70%);
+    border-radius: 50%;
+  }
+  .pikmin .face {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 26px;
+    height: 18px;
+    background: #fff3e0;
+    border-radius: 50%;
+  }
+</style>
+</head>
+<body>
+
+<div id="stars"></div>
+
+<h1>皮克敏轉盤計時器</h1>
+
+<div class="controls">
+  <label for="baseSeconds">最下方物品秒數</label>
+  <div class="stepper">
+    <button type="button" class="step-btn" id="decBtn" aria-label="減少">−</button>
+    <input type="number" id="baseSeconds" value="3" step="0.5" min="0" inputmode="decimal">
+    <button type="button" class="step-btn" id="incBtn" aria-label="增加">+</button>
+  </div>
+  <span>秒（順時針每個 +0.5 秒）</span>
+  <button type="button" class="help-btn" id="helpBtn" aria-label="操作說明">？</button>
+</div>
+
+<div class="modal-overlay" id="helpOverlay">
+  <div class="modal">
+    <h2>操作說明</h2>
+    <ol>
+      <li>設定最下方物品的秒數，可用「−」「＋」按鈕調整，順時針每個盆栽會自動 +0.5 秒。</li>
+      <li>點擊盆栽卡片可切換圖示：🔮其他／👑金盆／🥙大花苗。</li>
+      <li>按「開始」開始計時，盆栽會依序在對應秒數高亮，提示你點擊的時機。</li>
+      <li>按「重置」會重新整理頁面，回到初始狀態（等同 Refresh）。</li>
+    </ol>
+    <button type="button" class="modal-close" id="helpClose">知道了</button>
+  </div>
+</div>
+
+<div class="stage" id="stage">
+  <div class="pot" data-order="0" data-type="other"><span class="pot-icon">🔮</span><span class="pot-sec">3</span></div>
+  <div class="pot" data-order="1" data-type="other"><span class="pot-icon">🔮</span><span class="pot-sec">3.5</span></div>
+  <div class="pot" data-order="2" data-type="other"><span class="pot-icon">🔮</span><span class="pot-sec">4</span></div>
+  <div class="pot" data-order="3" data-type="other"><span class="pot-icon">🔮</span><span class="pot-sec">4.5</span></div>
+  <div class="pot" data-order="4" data-type="other"><span class="pot-icon">🔮</span><span class="pot-sec">5</span></div>
+  <div class="pot" data-order="5" data-type="other"><span class="pot-icon">🔮</span><span class="pot-sec">5.5</span></div>
+  <div class="timer">
+    <span class="timer-value" id="timerDisplay">00.00</span>
+    <button type="button" class="reset-btn" id="resetBtn">重置</button>
+  </div>
+</div>
+<div class="hint">點擊卡片可切換 🔮其他 ／ 👑金盆 ／ 🥙大花苗  </div>
+
+<div class="caption">點擊就能旋轉！</div>
+<button id="startBtn">開始</button>
+
+<div class="field">
+  <div class="flowers">
+    <span>💠</span><span>💠</span><span>💠</span><span>💠</span>
+  </div>
+  <div class="grass">
+    <div class="pikmin">
+      <div class="leaf"></div>
+      <div class="body"></div>
+      <div class="face"></div>
+    </div>
+    <div class="copyright">© 2026 皮小正 Pi Xiao Zheng. All Rights Reserved.</div>
+  </div>
+</div>
+
+<script>
+const baseInput = document.getElementById('baseSeconds');
+const decBtn = document.getElementById('decBtn');
+const incBtn = document.getElementById('incBtn');
+const pots = Array.from(document.querySelectorAll('.pot'));
+const timerDisplay = document.getElementById('timerDisplay');
+const startBtn = document.getElementById('startBtn');
+const resetBtn = document.getElementById('resetBtn');
+const helpBtn = document.getElementById('helpBtn');
+const helpOverlay = document.getElementById('helpOverlay');
+const helpClose = document.getElementById('helpClose');
+const STEP = 0.5;
+const HIGHLIGHT_WINDOW = 0.4; // seconds a pot stays highlighted
+
+let rafId = null;
+let startTime = null;
+
+function potSeconds(pot) {
+  return parseFloat(baseInput.value || 0) + Number(pot.dataset.order) * STEP;
+}
+
+function refreshLabels() {
+  pots.forEach(pot => {
+    pot.querySelector('.pot-sec').textContent = potSeconds(pot).toFixed(1).replace(/\.0$/, '');
+  });
+}
+
+function maxSeconds() {
+  return Math.max(...pots.map(potSeconds));
+}
+
+function formatTime(t) {
+  return t.toFixed(2).padStart(5, '0');
+}
+
+function tick() {
+  const elapsed = (performance.now() - startTime) / 1000;
+  timerDisplay.textContent = formatTime(elapsed);
+
+  pots.forEach(pot => {
+    const target = potSeconds(pot);
+    const active = elapsed >= target && elapsed < target + HIGHLIGHT_WINDOW;
+    pot.classList.toggle('active', active);
+  });
+
+  if (elapsed >= maxSeconds() + HIGHLIGHT_WINDOW) {
+    stopRun();
+    return;
+  }
+  rafId = requestAnimationFrame(tick);
+}
+
+function startRun() {
+  refreshLabels();
+  startTime = performance.now();
+  startBtn.textContent = '停止';
+  startBtn.classList.add('running');
+  baseInput.disabled = true;
+  decBtn.disabled = true;
+  incBtn.disabled = true;
+  rafId = requestAnimationFrame(tick);
+}
+
+function stopRun() {
+  cancelAnimationFrame(rafId);
+  rafId = null;
+  pots.forEach(pot => pot.classList.remove('active'));
+  timerDisplay.textContent = '00.00';
+  startBtn.textContent = '開始';
+  startBtn.classList.remove('running');
+  baseInput.disabled = false;
+  decBtn.disabled = false;
+  incBtn.disabled = false;
+}
+
+startBtn.addEventListener('click', () => {
+  if (rafId === null) {
+    startRun();
+  } else {
+    stopRun();
+  }
+});
+
+baseInput.addEventListener('input', refreshLabels);
+
+function adjustBase(delta) {
+  const next = Math.max(0, parseFloat(baseInput.value || 0) + delta);
+  baseInput.value = next.toFixed(1).replace(/\.0$/, '');
+  refreshLabels();
+}
+
+decBtn.addEventListener('click', () => adjustBase(-STEP));
+incBtn.addEventListener('click', () => adjustBase(STEP));
+
+resetBtn.addEventListener('click', () => location.reload());
+
+function openHelp() { helpOverlay.classList.add('open'); }
+function closeHelp() { helpOverlay.classList.remove('open'); }
+
+helpBtn.addEventListener('click', openHelp);
+helpClose.addEventListener('click', closeHelp);
+helpOverlay.addEventListener('click', (e) => {
+  if (e.target === helpOverlay) closeHelp();
+});
+
+const ICONS = { pot: '👑', sprout: '🥙', other: '🔮' };
+const TYPE_CYCLE = ['pot', 'sprout', 'other'];
+
+pots.forEach(pot => {
+  pot.addEventListener('click', () => {
+    if (rafId !== null) return; // don't change type mid-run
+    const nextType = TYPE_CYCLE[(TYPE_CYCLE.indexOf(pot.dataset.type) + 1) % TYPE_CYCLE.length];
+    pot.dataset.type = nextType;
+    pot.querySelector('.pot-icon').textContent = ICONS[nextType];
+  });
+});
+
+function initStars() {
+  const container = document.getElementById('stars');
+  const count = 60;
+  for (let i = 0; i < count; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    const size = (Math.random() * 2 + 1).toFixed(1);
+    star.style.width = size + 'px';
+    star.style.height = size + 'px';
+    star.style.animationDuration = (1.5 + Math.random() * 2.5).toFixed(2) + 's';
+    star.style.animationDelay = (Math.random() * 2).toFixed(2) + 's';
+    container.appendChild(star);
+  }
+}
+
+initStars();
+refreshLabels();
+</script>
+
+</body>
+</html>
